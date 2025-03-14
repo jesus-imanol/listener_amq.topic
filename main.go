@@ -11,13 +11,11 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-// SensorData estructura para los datos del sensor
-// Estructura exacta que debe tener siempre
 type SensorData struct {
-	Type     string      `json:"type"`
-	Quantity interface{} `json:"quantity"`
-	Text     string      `json:"text"`
-}
+		Type     string      `json:"type"`
+		Quantity interface{} `json:"quantity"`
+		Text     string      `json:"text"`
+	}
 
 func failOnError(err error, msg string) {
 	if err != nil {
@@ -26,36 +24,29 @@ func failOnError(err error, msg string) {
 }
 
 func sendToAPI(data []byte) error {
-	// Reemplaza esta URL con la de tu API
 	apiURL := "http://127.0.0.1:4000/v1/message/"
 	
-	// Crear la solicitud HTTP
 	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}
 	
-	// Configurar encabezados
 	req.Header.Set("Content-Type", "application/json")
 	
-	// Crear cliente HTTP con timeout
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
 	
-	// Enviar solicitud
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 	
-	// Registrar respuesta
 	log.Printf("API response status: %s", resp.Status)
 	return nil
 }
 
-// setupConsumer configura un consumidor para un topic específico
 func setupConsumer(ch *amqp.Channel, topicName string, queueName string) (<-chan amqp.Delivery, error) {
 	// Declarar la cola
 	q, err := ch.QueueDeclare(
