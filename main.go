@@ -12,12 +12,11 @@ import (
 )
 
 // SensorData estructura para los datos del sensor
+// Estructura exacta que debe tener siempre
 type SensorData struct {
-	Type     string `json:"type"`
-	Quantity int    `json:"quantity"`
-	Text     string `json:"text"`
-	Message  string `json:"message"`
-	Humedad  int    `json:"humedad"`
+	Type     string      `json:"type"`
+	Quantity interface{} `json:"quantity"`
+	Text     string      `json:"text"`
 }
 
 func failOnError(err error, msg string) {
@@ -56,15 +55,102 @@ func sendToAPI(data []byte) error {
 	return nil
 }
 
+// setupConsumer configura un consumidor para un topic específico
+func setupConsumer(ch *amqp.Channel, topicName string, queueName string) (<-chan amqp.Delivery, error) {
+	// Declarar la cola
+	q, err := ch.QueueDeclare(
+		queueName, // nombre de la cola
+		true,      // durable
+		false,     // eliminar cuando no se use
+		false,     // exclusivo
+		false,     // no esperar
+		nil,       // argumentos
+	)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Enlazar la cola al exchange con la routing key
+	err = ch.QueueBind(
+		q.Name,      // queue name
+		topicName,   // routing key
+		"amq.topic", // exchange
+		false,
+		nil)
+	if err != nil {
+		return nil, err
+	}
+	
+	log.Printf("Queue %s bound to exchange amq.topic with routing key %s", q.Name, topicName)
+	
+	// Configurar el consumidor
+	msgs, err := ch.Consume(
+		q.Name, // queue
+		"",     // consumer
+		true,   // auto ack
+		false,  // exclusive
+		false,  // no local
+		false,  // no wait
+		nil,    // args
+	)
+	if err != nil {
+		return nil, err
+	}
+	
+	return msgs, nil
+}
+
+// processMessages procesa los mensajes recibidos
+func processMessages(msgs <-chan amqp.Delivery, sensorType string) {
+	for d := range msgs {
+		log.Printf("Received %s message: %s", sensorType, d.Body)
+		
+		// Parsear el mensaje JSON recibido
+		var rawData map[string]interface{}
+		if err := json.Unmarshal(d.Body, &rawData); err != nil {
+			log.Printf("Error parsing JSON: %s", err)
+			continue
+		}
+		
+		// Crear la estructura estandarizada
+		sensorData := SensorData{
+			Type:     rawData["type"].(string),
+			Quantity: rawData["quantity"],
+			Text:     rawData["text"].(string),
+		}
+		
+		// Convertir de nuevo a JSON para asegurar el formato correcto
+		standardizedJSON, err := json.Marshal(sensorData)
+		if err != nil {
+			log.Printf("Error creating standardized JSON: %s", err)
+			continue
+		}
+		
+		// Registrar los datos procesados
+		log.Printf("%s data (standardized) - Type: %s, Quantity: %v, Text: %s",
+			sensorType, sensorData.Type, sensorData.Quantity, sensorData.Text)
+		
+		// Enviar datos estandarizados a la API
+		if err := sendToAPI(standardizedJSON); err != nil {
+			log.Printf("Error sending %s data to API: %s", sensorType, err)
+		} else {
+			log.Printf("%s data successfully sent to API", sensorType)
+		}
+	}
+}
+
 func main() {
+	// Conectar a RabbitMQ
 	conn, err := amqp.Dial("amqp://Somer:140823schmesom2018@44.209.159.224:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 	
+	// Abrir canal
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")
 	defer ch.Close()
 	
+	// Declarar exchange
 	err = ch.ExchangeDeclare(
 		"amq.topic", // name
 		"topic",     // type
@@ -76,71 +162,35 @@ func main() {
 	)
 	failOnError(err, "Failed to declare an exchange")
 	
-	q, err := ch.QueueDeclare(
-		"humedad", // nombre
-		true,      // durable
-		false,     // eliminar cuando no se use
-		false,     // exclusivo
-		false,     // no esperar
-		nil,       // argumentos
-	)
-	failOnError(err, "Failed to declare a queue")
+	// Definir topics predeterminados o usar los proporcionados como argumentos
+	humidityTopic := "systemHumidity.mqtt"
+	temperatureTopic := "systemTemperature.mqtt"
 	
-	// Si no se proporcionan claves de enrutamiento, usar el topic por defecto
-	bindingKeys := os.Args[1:]
-	if len(bindingKeys) == 0 {
-		bindingKeys = []string{"systemHumidity.mqtt"} // Topic por defecto
+	// Si se proporcionan argumentos, usar el primero para humedad y el segundo para temperatura
+	if len(os.Args) > 1 {
+		humidityTopic = os.Args[1]
+	}
+	if len(os.Args) > 2 {
+		temperatureTopic = os.Args[2]
 	}
 	
-	for _, s := range bindingKeys {
-		log.Printf("Binding queue %s to exchange %s with routing key %s",
-			q.Name, "amq.topic", s)
-		err = ch.QueueBind(
-			q.Name,      // queue name
-			s,           // routing key
-			"amq.topic", // exchange
-			false,
-			nil)
-		failOnError(err, "Failed to bind a queue")
-	}
+	// Configurar consumidor para humedad
+	humidityMsgs, err := setupConsumer(ch, humidityTopic, "humedad")
+	failOnError(err, "Failed to setup humidity consumer")
 	
-	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		true,   // auto ack
-		false,  // exclusive
-		false,  // no local
-		false,  // no wait
-		nil,    // args
-	)
-	failOnError(err, "Failed to register a consumer")
+	// Configurar consumidor para temperatura
+	temperatureMsgs, err := setupConsumer(ch, temperatureTopic, "temperatura")
+	failOnError(err, "Failed to setup temperature consumer")
 	
-	var forever chan struct{}
+	// Procesar mensajes de humedad en una goroutine
+	go processMessages(humidityMsgs, "Humidity")
 	
-	go func() {
-		for d := range msgs {
-			log.Printf("Received message: %s", d.Body)
-			
-			// Parsear el mensaje JSON
-			var sensorData SensorData
-			if err := json.Unmarshal(d.Body, &sensorData); err != nil {
-				log.Printf("Error parsing JSON: %s", err)
-				continue
-			}
-			
-			// Registrar los datos del sensor
-			log.Printf("Sensor data - Type: %s, Quantity: %d, Text: %s",
-				sensorData.Type, sensorData.Quantity, sensorData.Text)
-			
-			// Enviar datos a la API
-			if err := sendToAPI(d.Body); err != nil {
-				log.Printf("Error sending data to API: %s", err)
-			} else {
-				log.Printf("Data successfully sent to API")
-			}
-		}
-	}()
+	// Procesar mensajes de temperatura en una goroutine
+	go processMessages(temperatureMsgs, "Temperature")
 	
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
+	
+	// Canal para mantener la aplicación corriendo
+	var forever chan struct{}
 	<-forever
-	}
+}
