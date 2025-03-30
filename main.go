@@ -30,10 +30,15 @@ func main() {
     if err != nil {
         log.Fatalf("Error al configurar consumidor de temperatura: %s", err)
     }
+    lightMsgs, err := utils.SetupConsumer(ch, "ambientLightSensor.mqtt", "luz")
+    if err != nil {
+        log.Fatalf("Error al configurar consumidor de luz: %s", err)
+    }
    //se ejecutan de manera paralela
     go consumers.ProcessHumidityMessages(humidityMsgs)
     go consumers.ProcessTemperatureMessages(temperatureMsgs)
-
+    go consumers.ProcessLightMessages(lightMsgs)
+    
     log.Println("Esperando mensajes. Presiona CTRL+C para salir.")
     var forever chan struct{}
     <-forever
