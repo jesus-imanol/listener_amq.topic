@@ -19,13 +19,16 @@ func ProcessTemperatureMessages(msgs <-chan amqp.Delivery) {
             log.Printf("Error al parsear JSON: %s", err)
             continue
         }
-
+        nowHour := time.Now()
+        mysqlDateTime := nowHour.Format("2006-01-02 15:04:05");
+        log.Printf("Formato de fecha y hora: %s", mysqlDateTime)
         temperature := entities.SensorData{
             ID:       time.Now().Unix(),
             Type:     rawData["type"].(string),
             Quantity: rawData["quantity"].(float64),
             Text:     rawData["text"].(string),
             User:     rawData["user"].(string),
+            CreatedAt: mysqlDateTime,
         }
 
         standardizedJSON, err := json.Marshal(temperature)

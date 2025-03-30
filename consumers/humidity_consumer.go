@@ -19,13 +19,15 @@ func ProcessHumidityMessages(msgs <-chan amqp.Delivery) {
             log.Printf("Error al parsear JSON: %s", err)
             continue
         }
-
+        nowHour := time.Now()
+        mysqlDateTime := nowHour.Format("2006-01-02 15:04:05");
         humidity := entities.SensorData{
             ID:       time.Now().Unix(),
             Type:     rawData["type"].(string),
             Quantity: rawData["quantity"].(float64),
             Text:     rawData["text"].(string),
             User:     rawData["user"].(string),
+            CreatedAt: mysqlDateTime,
         }
 
         standardizedJSON, err := json.Marshal(humidity)
