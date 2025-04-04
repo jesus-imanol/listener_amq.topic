@@ -7,8 +7,7 @@ import (
     "time"
 )
 
-// SendToAPI envía datos JSON a la API
-func SendToAPI(data []byte) error {
+func SendToAPI(token string, data []byte) error {
     apiURL := "http://127.0.0.1:4000/v1/message/"
 
     req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(data))
@@ -17,9 +16,10 @@ func SendToAPI(data []byte) error {
     }
 
     req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("Authorization", token)
 
     client := &http.Client{
-        Timeout: time.Second * 10,
+        Timeout: time.Second * 10, 
     }
 
     resp, err := client.Do(req)
@@ -28,6 +28,6 @@ func SendToAPI(data []byte) error {
     }
     defer resp.Body.Close()
 
-    log.Printf("API response status: %s", resp.Status)
+    log.Println("API response status: ", resp.Status)
     return nil
 }

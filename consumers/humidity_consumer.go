@@ -10,7 +10,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func ProcessHumidityMessages(msgs <-chan amqp.Delivery) {
+func ProcessHumidityMessages(token string, msgs <-chan amqp.Delivery) {
     for d := range msgs {
         log.Printf("Recibido mensaje de humedad: %s", d.Body)
 
@@ -36,7 +36,7 @@ func ProcessHumidityMessages(msgs <-chan amqp.Delivery) {
             continue
         }
 
-        if err := utils.SendToAPI(standardizedJSON); err != nil {
+        if err := utils.SendToAPI(token, standardizedJSON); err != nil {
             log.Printf("Error al enviar datos a la API: %s", err)
         } else {
             log.Printf("Datos de humedad enviados exitosamente a la API: %s", standardizedJSON)

@@ -10,7 +10,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func ProcessTemperatureMessages(msgs <-chan amqp.Delivery) {
+func ProcessTemperatureMessages(token string, msgs <-chan amqp.Delivery) {
     for d := range msgs {
         log.Printf("Recibido mensaje de temperatura: %s", d.Body)
 
@@ -37,7 +37,7 @@ func ProcessTemperatureMessages(msgs <-chan amqp.Delivery) {
             continue
         }
 
-        if err := utils.SendToAPI(standardizedJSON); err != nil {
+        if err := utils.SendToAPI(token, standardizedJSON); err != nil {
             log.Printf("Error al enviar datos a la API: %s", err)
         } else {
             log.Printf("Datos de temperatura enviados exitosamente a la API: %s", standardizedJSON)
