@@ -35,7 +35,11 @@ func ProcessHumidityMessages(token string, msgs <-chan amqp.Delivery) {
             log.Printf("Error al crear JSON estandarizado: %s", err)
             continue
         }
-
+        err1 := utils.InitEsp32(humidity.User, token)
+        if err1 != nil {
+            log.Printf("Estado de la inicialización: %s", err)
+            continue
+        }
         if err := utils.SendToAPI(token, standardizedJSON); err != nil {
             log.Printf("Error al enviar datos a la API: %s", err)
         } else {

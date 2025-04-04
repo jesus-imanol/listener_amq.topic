@@ -1,4 +1,4 @@
-package entities
+package data
 
 type LogData struct {
     Password string `json:"password"`

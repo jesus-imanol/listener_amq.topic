@@ -37,7 +37,7 @@ func main() {
     if err != nil {
         log.Fatalf("Error al configurar consumidor de luz: %s", err)
     }
-   //se ejecutan de manera paralela
+  
     go consumers.ProcessHumidityMessages(token, humidityMsgs)
     go consumers.ProcessTemperatureMessages(token, temperatureMsgs)
     go consumers.ProcessLightMessages(token, lightMsgs)
