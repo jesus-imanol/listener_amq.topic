@@ -12,7 +12,6 @@ func main() {
     if errToken != nil {
         log.Fatalf("Error al generar token: %s", errToken)
     }
-    log.Printf("Conectado a RabbitMQ con token: %s", token)
     conn, err := amqp.Dial("amqp://Somer:140823schmesom2018@44.209.159.224:5672/")
     if err != nil {
         log.Fatalf("Error al conectar a RabbitMQ: %s", err)

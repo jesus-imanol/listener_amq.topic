@@ -1,19 +1,27 @@
 package utils
 
 import (
-    "bytes"
-    "encoding/json"
-    "io/ioutil"
-    "log"
-    "net/http"
-    "os"
-    "time"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
+	"io/ioutil"
+
+	"github.com/joho/godotenv"
 )
 
 // LogConsumer realiza el proceso de autenticación y retorna el Bearer Token
 func LogConsumer() (string, error) {
-    username := os.Getenv("USERNAME")
-    password := os.Getenv("PASSWORD")
+	
+    err := godotenv.Load()
+    if err != nil {
+        log.Fatalf("Error al cargar el archivo .env: %v", err)
+    }
+    username := os.Getenv("USERNAME_CONSUMER")
+    password := os.Getenv("PASSWORD_CONSUMER")
 
     loginData := map[string]string{
         "username": username,
@@ -42,12 +50,11 @@ func LogConsumer() (string, error) {
         return "", err
     }
     defer resp.Body.Close()
-
-    token := resp.Header.Get("Authorization")
-    if token == "" {
-        return "", err 
-    }
-
+    token := resp.Header.Get("authorization")
+	if token == "" {
+		return "", fmt.Errorf("missing authorization token")
+	}
+	
     log.Printf("API response status: %s", resp.Status)
 
     body, _ := ioutil.ReadAll(resp.Body)
