@@ -8,7 +8,7 @@ import (
 )
 
 func SendToAPI(token string, data []byte) error {
-    apiURL := "http://127.0.0.1:4000/v1/message/consumer/"
+    apiURL := "http://52.23.135.169:4000/v1/message/consumer/"
 
     req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(data))
     if err != nil {

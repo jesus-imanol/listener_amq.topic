@@ -33,7 +33,7 @@ func LogConsumer() (string, error) {
         return "", err
     }
 
-    apiURL := "http://127.0.0.1:8080/v1/users/login"
+    apiURL := "http://18.232.225.48/v1/users/login"
     req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
     if err != nil {
         return "", err

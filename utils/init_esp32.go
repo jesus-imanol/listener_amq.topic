@@ -6,18 +6,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/joho/godotenv"
 )
 
-func InitEsp32(status string, token string) error {
+func InitEsp32(user string, token string) error {
 	err := godotenv.Load()
 	if err != nil {
         return err
     }
-	username := os.Getenv("USERNAME_CONSUMER")
 	initEsp32Data := map[string]string{
         "status": "activate",
     }
@@ -25,7 +23,7 @@ func InitEsp32(status string, token string) error {
 	if err != nil {
         return err
     }
-	apiURL := fmt.Sprintf("http://127.0.0.1:8081/v1/users/login?username=%s", username)
+	apiURL := fmt.Sprintf("http://127.0.0.1:8081/v1/esp32/protected/change_status/:%s", user)
 	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
 	if err != nil {
         return err
